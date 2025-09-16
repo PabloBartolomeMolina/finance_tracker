@@ -1,0 +1,34 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*.pyc
+*$py.class
+
+# Virtual environment
+venv/
+env/
+.venv/
+
+# SQLite database
+data/finance.db
+
+# PyQt Designer generated files (if you generate .ui files and compile)
+*.py~ 
+*.ui~ 
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Python packaging
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# IDE files (optional)
+.vscode/
+.idea/
