@@ -1,6 +1,47 @@
 '''
     File Name: main_window.py
-    Version: 1.0.0
+    Version: 1.1.0
     Date: 16/09/2025
     Author: Pablo Bartolomé Molina
 '''
+from PyQt5.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QPushButton, QTextEdit
+
+
+class MainWindow(QMainWindow):
+    def __init__(self):
+        super().__init__()
+
+        self.setWindowTitle("PyQt Main Window Example")
+
+        # Central widget
+        central_widget = QWidget()
+        self.setCentralWidget(central_widget)
+
+        # Layout
+        layout = QVBoxLayout()
+
+        # Text display
+        self.text_display = QTextEdit()
+        self.text_display.setReadOnly(True)
+        layout.addWidget(self.text_display)
+
+        # Buttons
+        self.button1 = QPushButton("Button 1")
+        self.button2 = QPushButton("Button 2")
+        self.button3 = QPushButton("Button 3")
+
+        layout.addWidget(self.button1)
+        layout.addWidget(self.button2)
+        layout.addWidget(self.button3)
+
+        # Connect buttons to methods
+        self.button1.clicked.connect(lambda: self.update_text("Button 1 clicked"))
+        self.button2.clicked.connect(lambda: self.update_text("Button 2 clicked"))
+        self.button3.clicked.connect(lambda: self.update_text("Button 3 clicked"))
+
+        # Set layout
+        central_widget.setLayout(layout)
+
+    def update_text(self, message: str):
+        """Append a message to the text display."""
+        self.text_display.append(message)
