@@ -44,6 +44,9 @@ class MainWindow(QMainWindow):
         self.button1.clicked.connect(lambda: self.update_text("Button 1 clicked"))
         self.button2.clicked.connect(lambda: self.update_text("Button 2 clicked"))
         self.button3.clicked.connect(lambda: self.update_text("Button 3 clicked"))
+        self.button4.clicked.connect(lambda: self.update_text("Button 4 clicked"))
+        self.button5.clicked.connect(lambda: self.update_text("Button 5 clicked"))
+        self.button6.clicked.connect(lambda: self.update_text("Button 6 clicked"))
 
         # Set layout
         central_widget.setLayout(layout)
