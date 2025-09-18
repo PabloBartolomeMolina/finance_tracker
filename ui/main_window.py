@@ -26,13 +26,19 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.text_display)
 
         # Buttons
-        self.button1 = QPushButton("Button 1")
-        self.button2 = QPushButton("Button 2")
-        self.button3 = QPushButton("Button 3")
+        self.button1 = QPushButton("Add transaction")
+        self.button2 = QPushButton("Edit transaction")
+        self.button3 = QPushButton("Delete transaction")
+        self.button4 = QPushButton("Filter/Searh transactions")
+        self.button5 = QPushButton("View Statistics")
+        self.button6 = QPushButton("Import/Export")
 
         layout.addWidget(self.button1)
         layout.addWidget(self.button2)
         layout.addWidget(self.button3)
+        layout.addWidget(self.button4)
+        layout.addWidget(self.button5)
+        layout.addWidget(self.button6)
 
         # Connect buttons to methods
         self.button1.clicked.connect(lambda: self.update_text("Button 1 clicked"))
