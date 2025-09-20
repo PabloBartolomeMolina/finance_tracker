@@ -4,53 +4,85 @@
     Date: 16/09/2025
     Author: Pablo Bartolomé Molina
 '''
-from PyQt5.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QPushButton, QTextEdit
-
+from PyQt5.QtWidgets import (
+    QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
+    QTextEdit, QGroupBox
+)
+from PyQt5.QtCore import Qt
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
 
-        self.setWindowTitle("PyQt Main Window Example")
+        self.setWindowTitle("Finance Tracker Python app")
+        self.resize(600, 400)
 
         # Central widget
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
 
-        # Layout
-        layout = QVBoxLayout()
+        main_layout = QVBoxLayout()
+        main_layout.setSpacing(15)
+        main_layout.setContentsMargins(10, 10, 10, 10)
 
         # Text display
         self.text_display = QTextEdit()
         self.text_display.setReadOnly(True)
-        layout.addWidget(self.text_display)
+        main_layout.addWidget(self.text_display)
 
-        # Buttons
-        self.button1 = QPushButton("Add transaction")
-        self.button2 = QPushButton("Edit transaction")
-        self.button3 = QPushButton("Delete transaction")
-        self.button4 = QPushButton("Filter/Searh transactions")
-        self.button5 = QPushButton("View Statistics")
+        # Transactions group
+        transaction_group = QGroupBox("Transactions")
+        t_layout = QHBoxLayout()
+        self.button1 = QPushButton("Add")
+        self.button2 = QPushButton("Edit")
+        self.button3 = QPushButton("Delete")
+        t_layout.addWidget(self.button1)
+        t_layout.addWidget(self.button2)
+        t_layout.addWidget(self.button3)
+        transaction_group.setLayout(t_layout)
+        main_layout.addWidget(transaction_group)
+
+        # Reports / Utilities group
+        report_group = QGroupBox("Reports & Utilities")
+        r_layout = QHBoxLayout()
+        self.button4 = QPushButton("Filter/Search")
+        self.button5 = QPushButton("Statistics")
         self.button6 = QPushButton("Import/Export")
+        r_layout.addWidget(self.button4)
+        r_layout.addWidget(self.button5)
+        r_layout.addWidget(self.button6)
+        report_group.setLayout(r_layout)
+        main_layout.addWidget(report_group)
 
-        layout.addWidget(self.button1)
-        layout.addWidget(self.button2)
-        layout.addWidget(self.button3)
-        layout.addWidget(self.button4)
-        layout.addWidget(self.button5)
-        layout.addWidget(self.button6)
+        # Connect buttons
+        for i, btn in enumerate([self.button1, self.button2, self.button3,
+                                 self.button4, self.button5, self.button6], 1):
+            btn.clicked.connect(lambda _, x=i: self.update_text(f"Button {x} clicked"))
 
-        # Connect buttons to methods
-        self.button1.clicked.connect(lambda: self.update_text("Button 1 clicked"))
-        self.button2.clicked.connect(lambda: self.update_text("Button 2 clicked"))
-        self.button3.clicked.connect(lambda: self.update_text("Button 3 clicked"))
-        self.button4.clicked.connect(lambda: self.update_text("Button 4 clicked"))
-        self.button5.clicked.connect(lambda: self.update_text("Button 5 clicked"))
-        self.button6.clicked.connect(lambda: self.update_text("Button 6 clicked"))
+        central_widget.setLayout(main_layout)
 
-        # Set layout
-        central_widget.setLayout(layout)
+        # Optional: simple styling
+        self.setStyleSheet("""
+            QGroupBox {
+                font-weight: bold;
+                border: 1px solid gray;
+                border-radius: 5px;
+                margin-top: 10px;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 3px 0 3px;
+            }
+            QPushButton {
+                min-width: 100px;
+                padding: 5px;
+            }
+            QTextEdit {
+                font-family: Consolas, monospace;
+                font-size: 12pt;
+            }
+        """)
 
     def update_text(self, message: str):
-        """Append a message to the text display."""
         self.text_display.append(message)
