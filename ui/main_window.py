@@ -1,6 +1,6 @@
 '''
     File Name: main_window.py
-    Version: 1.1.0
+    Version: 1.3.1
     Date: 16/09/2025
     Author: Pablo Bartolomé Molina
 '''
@@ -54,7 +54,7 @@ class MainWindow(QMainWindow):
         report_group.setLayout(r_layout)
         main_layout.addWidget(report_group)
 
-        # Connect buttons
+        # Connect buttons -- TODO: update actions once they are properly coded to interact with DB and files.
         for i, btn in enumerate([self.button1, self.button2, self.button3,
                                  self.button4, self.button5, self.button6], 1):
             btn.clicked.connect(lambda _, x=i: self.update_text(f"Button {x} clicked"))
