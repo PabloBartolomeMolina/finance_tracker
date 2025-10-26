@@ -88,6 +88,19 @@ class MainWindow(QtWidgets.QMainWindow):
 
         central_widget.setLayout(main_layout)
 
+        # Restore/Set initial window size (remember last state with QSettings)
+        try:
+            settings = QtCore.QSettings("pbm", APP_NAME)
+            geom = settings.value("geometry")
+            if isinstance(geom, QtCore.QByteArray) and not geom.isEmpty():
+                self.restoreGeometry(geom)
+            else:
+                # Default startup size
+                self.resize(1200, 800)
+                self.setMinimumSize(800, 600)
+        except Exception:
+            logger.exception("Failed to restore/set window geometry")
+
     def _apply_stylesheet(self) -> None:
         """Load and apply a stylesheet if the file exists; otherwise skip quietly."""
         path = Path(STYLESHEET_PATH)
@@ -177,3 +190,11 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def update_text(self, message: str):
         self.text_display.append(message)
+
+    def closeEvent(self, event):
+        try:
+            settings = QtCore.QSettings("pbm", APP_NAME)
+            settings.setValue("geometry", self.saveGeometry())
+        except Exception:
+            logger.exception("Failed to save window geometry")
+        super().closeEvent(event)
