@@ -1,1 +1,115 @@
+/* Simple, light QSS for PyQt5.
+   - Accent color: #1976d2 (adjust as needed)
+   - Designed for Windows (Segoe UI) but falls back to common fonts.
+*/
+
+QWidget {
+    background-color: #f5f7fa;
+    color: #222222;
+    font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+    font-size: 10pt;
+}
+
+/* Main chrome */
+QMainWindow, QDialog {
+    background: #f5f7fa;
+}
+
+/* Menus / toolbars / status */
+QMenuBar, QToolBar {
+    background: #ffffff;
+    border-bottom: 1px solid #dcdfe6;
+}
+
+QStatusBar {
+    background: #f0f2f5;
+    color: #444444;
+    border-top: 1px solid #dcdfe6;
+    padding: 4px;
+}
+
+/* Buttons */
+QPushButton {
+    background-color: #1976d2;
+    color: #ffffff;
+    border: none;
+    padding: 6px 10px;
+    border-radius: 4px;
+    min-height: 26px;
+}
+QPushButton:hover {
+    background-color: #1565c0;
+}
+QPushButton:pressed {
+    background-color: #0f4a8a;
+}
+QPushButton:disabled {
+    background-color: #cfd8e3;
+    color: #7a7a7a;
+}
+
+/* Inputs */
+QLineEdit, QTextEdit, QPlainTextEdit, QSpinBox, QDoubleSpinBox, QComboBox {
+    background: #ffffff;
+    border: 1px solid #cfd8e3;
+    border-radius: 4px;
+    padding: 4px;
+    selection-background-color: #cce4ff;
+    selection-color: #000000;
+}
+
+/* Combo dropdown arrow */
+QComboBox::drop-down {
+    subcontrol-origin: padding;
+    subcontrol-position: top right;
+    width: 18px;
+    border-left: 1px solid #cfd8e3;
+}
+
+/* Tables and lists */
+QTableView, QListView {
+    background: #ffffff;
+    gridline-color: #e6e9ef;
+    alternate-background-color: #fbfcfe;
+    selection-background-color: #cce4ff;
+    selection-color: #000000;
+}
+QHeaderView::section {
+    background: #f0f2f5;
+    padding: 6px;
+    border: none;
+    border-bottom: 1px solid #e6e9ef;
+    font-weight: 600;
+}
+
+/* Tabs */
+QTabWidget::pane {
+    border: 1px solid #e6e9ef;
+    border-radius: 4px;
+}
+
+/* Progress */
+QProgressBar {
+    border: 1px solid #cfd8e3;
+    border-radius: 6px;
+    text-align: center;
+    background: #ffffff;
+    height: 14px;
+}
+QProgressBar::chunk {
+    background-color: #1976d2;
+    border-radius: 6px;
+}
+
+/* Tree */
+QTreeView {
+    background: #ffffff;
+}
+
+/* Small utility */
+QToolButton {
+    background: transparent;
+    border: none;
+    padding: 4px;
+}
 
