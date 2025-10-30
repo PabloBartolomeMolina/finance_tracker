@@ -1,10 +1,10 @@
 '''
     File Name: transaction_form.py
-    Version: 1.0.0
-    Date: 16/09/2025
+    Version: 1.0.1
+    Date: 30/10/2025
     Author: Pablo Bartolomé Molina
 '''
-from PyQt5.QtWidgets import QDialog
+from PyQt6.QtWidgets import QDialog
 
 class TransactionForm(QDialog):
     def __init__(self, parent=None):

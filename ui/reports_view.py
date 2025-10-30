@@ -4,7 +4,7 @@
     Date: 16/09/2025
     Author: Pablo Bartolomé Molina
 '''
-from PyQt5.QtWidgets import QWidget
+from PyQt6.QtWidgets import QWidget
 
 class ReportsView(QWidget):
     def __init__(self, parent=None):

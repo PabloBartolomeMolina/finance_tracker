@@ -1,14 +1,14 @@
 '''
     File Name: main_window.py
-    Version: 1.3.1
-    Date: 16/09/2025
+    Version: 2.0.0
+    Date: 30/10/2025
     Author: Pablo Bartolomé Molina
 '''
 from pathlib import Path
 import logging
 from typing import Any, Callable, Optional
 
-from PyQt5 import QtWidgets, QtGui, QtCore
+from PyQt6 import QtWidgets, QtGui, QtCore
 
 from config import APP_NAME, APP_VERSION, STYLESHEET_PATH, ensure_data_dir
 
@@ -91,9 +91,16 @@ class MainWindow(QtWidgets.QMainWindow):
         # Restore/Set initial window size (remember last state with QSettings)
         try:
             settings = QtCore.QSettings("pbm", APP_NAME)
-            geom = settings.value("geometry")
-            if isinstance(geom, QtCore.QByteArray) and not geom.isEmpty():
-                self.restoreGeometry(geom)
+            geom = settings.value("geometry", None)
+            if geom:
+                # value() may return bytes or QByteArray depending on platform/binding
+                if isinstance(geom, (bytes, bytearray)):
+                    geom = QtCore.QByteArray(bytes(geom))
+                if isinstance(geom, QtCore.QByteArray) and not geom.isEmpty():
+                    self.restoreGeometry(geom)
+                else:
+                    self.resize(1200, 800)
+                    self.setMinimumSize(800, 600)
             else:
                 # Default startup size
                 self.resize(1200, 800)
