@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from PyQt5 import QtCore
+from PyQt6 import QtCore
 
 import config
 from ui.main_window import MainWindow
