@@ -81,10 +81,13 @@ class MainWindow(QtWidgets.QMainWindow):
         report_group.setLayout(r_layout)
         main_layout.addWidget(report_group)
 
-        # Connect buttons -- TODO: update actions once they are properly coded to interact with DB and files.
-        for i, btn in enumerate([self.button1, self.button2, self.button3,
-                                 self.button4, self.button5, self.button6], 1):
-            btn.clicked.connect(lambda _, x=i: self.update_text(f"Button {x} clicked"))
+        # Connect buttons to their dedicated handlers
+        self.button1.clicked.connect(self.on_add_clicked)
+        self.button2.clicked.connect(self.on_edit_clicked)
+        self.button3.clicked.connect(self.on_delete_clicked)
+        self.button4.clicked.connect(self.on_filter_search_clicked)
+        self.button5.clicked.connect(self.on_statistics_clicked)
+        self.button6.clicked.connect(self.on_import_export_clicked)
 
         central_widget.setLayout(main_layout)
 
@@ -205,3 +208,39 @@ class MainWindow(QtWidgets.QMainWindow):
         except Exception:
             logger.exception("Failed to save window geometry")
         super().closeEvent(event)
+
+    def on_add_clicked(self) -> None:
+        """Handle Add button clicked (open transaction form / create new entry)."""
+        logger.debug("on_add_clicked")
+        self.status.showMessage("Adding transaction...")
+        # TODO: open TransactionForm and persist new transaction
+
+    def on_edit_clicked(self) -> None:
+        """Handle Edit button clicked (edit selected transaction)."""
+        logger.debug("on_edit_clicked")
+        self.status.showMessage("Editing transaction...")
+        # TODO: open selected transaction in TransactionForm
+
+    def on_delete_clicked(self) -> None:
+        """Handle Delete button clicked (remove selected transaction)."""
+        logger.debug("on_delete_clicked")
+        self.status.showMessage("Deleting transaction...")
+        # TODO: confirm and delete selected transaction
+
+    def on_filter_search_clicked(self) -> None:
+        """Handle Filter/Search button clicked (open search/filter UI)."""
+        logger.debug("on_filter_search_clicked")
+        self.status.showMessage("Opening filter/search...")
+        # TODO: open filter/search dialog or panel
+
+    def on_statistics_clicked(self) -> None:
+        """Handle Statistics button clicked (show reports/graphs)."""
+        logger.debug("on_statistics_clicked")
+        self.status.showMessage("Showing statistics...")
+        # TODO: build and display statistics view
+
+    def on_import_export_clicked(self) -> None:
+        """Handle Import/Export button clicked (import or export data)."""
+        logger.debug("on_import_export_clicked")
+        self.status.showMessage("Import / Export...")
+        # TODO: open import/export workflow
