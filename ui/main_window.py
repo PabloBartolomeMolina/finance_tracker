@@ -1,7 +1,7 @@
 '''
     File Name: main_window.py
-    Version: 2.0.0
-    Date: 30/10/2025
+    Version: 2.1.0
+    Date: 30/11/2025
     Author: Pablo Bartolomé Molina
 '''
 from pathlib import Path
@@ -35,6 +35,8 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # DB manager may be injected by the app
         self.db_manager = db_manager
+        # If caller provided a db_manager, ensure the DB file exists / is initialized.
+        self.ensure_db_ready()
 
         # Thread pool for background tasks
         self._pool = QtCore.QThreadPool.globalInstance()
@@ -244,3 +246,18 @@ class MainWindow(QtWidgets.QMainWindow):
         logger.debug("on_import_export_clicked")
         self.status.showMessage("Import / Export...")
         # TODO: open import/export workflow
+    
+    def ensure_db_ready(self) -> None:
+        """Ensure the database file exists and is initialized."""
+        if self.db_manager is not None:
+            try:
+                # prefer a method on the db_manager instance
+                if hasattr(self.db_manager, "ensure_database"):
+                    self.db_manager.ensure_database()
+                else:
+                    # fallback: try module-level helper
+                    from database.db_manager import DatabaseManager as _DM
+                    # if caller passed another implementation, we won't override it
+                    logger.debug("Injected db_manager has no ensure_database(); not creating DB")
+            except Exception:
+                logger.exception("Failed to ensure database exists via injected db_manager")

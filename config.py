@@ -1,7 +1,7 @@
 '''
     File Name: config.py
-    Version: 1.1.0
-    Date: 25/10/2025
+    Version: 1.2.0
+    Date: 30/110/2025
     Author: Pablo Bartolomé Molina
 '''
 
@@ -11,7 +11,7 @@ import logging
 # Project paths & files
 BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR / "data"
-DB_FILENAME = "finance.db"
+DB_FILENAME = "finance_tracker.db"
 DATABASE_PATH = DATA_DIR / DB_FILENAME   # Path object
 SQLITE_URI = f"sqlite:///{DATABASE_PATH}"
 
