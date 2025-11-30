@@ -1,13 +1,13 @@
 Personal Finance Tracker
 ====================================================
 
-Description:
+Description
 -------------
 A desktop application to track your personal income and expenses.
 Built with Python and PyQt6, with data stored in a local SQLite database.
 It allows you to add, edit, delete, and categorize transactions, and view reports with charts.
 
-Features:
+Features
 ----------
 - Add, edit, and delete transactions
 - Categorize transactions (Food, Rent, Salary, Entertainment, etc.)
@@ -16,7 +16,7 @@ Features:
 - Import and export transactions via CSV
 - Simple and intuitive GUI
 
-Requirements:
+Requirements
 -------------
 - Python 3.10+
 - PyQt6
@@ -24,7 +24,7 @@ Requirements:
 - pandas
 - sqlite3 (built-in)
 
-Installation:
+Installation
 -------------
 1. Clone or download the project folder.
 2. Create a virtual environment (optional but recommended):
@@ -37,8 +37,10 @@ Installation:
 5. Run the application:
    python main.py
 
-Project Structure:
+Project Structure
 ------------------
+
+```
 finance_tracker/
 │
 ├── main.py                  # Entry point
@@ -51,8 +53,9 @@ finance_tracker/
 ├── tests/                   # Unit tests
 ├── README.md                # This file
 └── requirements.txt         # Python dependencies
+```
 
-Usage:
+Usage
 -------
 - Launch the app via main.py
 - Add transactions via the form
@@ -60,6 +63,6 @@ Usage:
 - Check reports in the Reports tab
 - Export/Import transactions using the File menu
 
-License:
+License
 ---------
 This project is free to use and modify.
