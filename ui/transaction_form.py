@@ -152,18 +152,8 @@ class TransactionForm(QDialog):
             return
 
         tx = {"description": desc, "amount": amt, "date": date, "category": cat}
-
-        # Try to persist using db_manager if available
-        if getattr(self, "db_manager", None) is not None:
-            saver = getattr(self.db_manager, "add_transaction", None) or getattr(self.db_manager, "save_transaction", None)
-            if callable(saver):
-                try:
-                    saver(tx)
-                except Exception:
-                    QMessageBox.critical(self, "Save failed", "Failed to save transaction.")
-                    return
-
-        # store last transaction and close dialog as accepted
+        # Do NOT persist here. The caller (window/controller) is responsible for saving
+        # to avoid duplicate inserts when both the form and the caller attempt to save.
         self._transaction = tx
         self.accept()
 

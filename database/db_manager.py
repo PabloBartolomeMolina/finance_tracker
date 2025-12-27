@@ -47,7 +47,7 @@ class DatabaseManager:
             cur.execute(
                 """
                 CREATE TABLE IF NOT EXISTS categories (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    id INTEGER PRIMARY KEY,
                     name TEXT NOT NULL UNIQUE
                 );
                 """
@@ -55,7 +55,7 @@ class DatabaseManager:
             cur.execute(
                 """
                 CREATE TABLE IF NOT EXISTS transactions (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    id INTEGER PRIMARY KEY,
                     description TEXT,
                     amount REAL NOT NULL,
                     date TEXT NOT NULL,
@@ -271,3 +271,53 @@ class DatabaseManager:
         except Exception:
             logger.exception("Failed importing transactions from CSV %s", path)
             return count
+
+    def compact_transaction_ids(self) -> Dict[int, int]:
+        """Rebuild the transactions table to compact/reassign sequential IDs.
+
+        Returns a mapping of old_id -> new_id. This operation is destructive
+        to the `id` values and should be used with care; consider backing up
+        the DB first. The method preserves other column values and category
+        relationships.
+        """
+        mapping: Dict[int, int] = {}
+        try:
+            conn = self._connect()
+            cur = conn.cursor()
+            # create new table
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS transactions_new (
+                    id INTEGER PRIMARY KEY,
+                    description TEXT,
+                    amount REAL NOT NULL,
+                    date TEXT NOT NULL,
+                    category_id INTEGER
+                );
+                """
+            )
+
+            # iterate old rows in id order and insert into new table, recording mapping
+            cur.execute("SELECT id, description, amount, date, category_id FROM transactions ORDER BY id")
+            rows = cur.fetchall()
+            for old_id, description, amount, date, category_id in rows:
+                cur.execute(
+                    "INSERT INTO transactions_new (description, amount, date, category_id) VALUES (?, ?, ?, ?)",
+                    (description, amount, date, category_id),
+                )
+                new_id = cur.lastrowid
+                mapping[int(old_id)] = int(new_id)
+
+            # Replace tables atomically
+            cur.execute("DROP TABLE transactions")
+            cur.execute("ALTER TABLE transactions_new RENAME TO transactions")
+            conn.commit()
+            conn.close()
+            return mapping
+        except Exception:
+            logger.exception("Failed compacting transaction ids")
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+            return mapping
