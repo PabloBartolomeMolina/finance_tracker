@@ -105,6 +105,22 @@ class MainWindow(QtWidgets.QMainWindow):
 
         central_widget.setLayout(main_layout)
 
+        # If a database exists, attach it and load transactions immediately so
+        # the table shows existing data on startup. Do NOT create a new DB here.
+        try:
+            if not getattr(self, "db_manager", None):
+                dm = DatabaseManager()
+                if dm.db_path.exists():
+                    self.db_manager = dm
+            if getattr(self, "db_manager", None):
+                # load existing transactions into the table
+                try:
+                    self.load_transactions()
+                except Exception:
+                    logger.exception("Failed loading transactions on startup")
+        except Exception:
+            logger.exception("Failed to attach existing DatabaseManager on startup")
+
         # Restore/Set initial window size (remember last state with QSettings)
         try:
             settings = QtCore.QSettings("pbm", APP_NAME)
