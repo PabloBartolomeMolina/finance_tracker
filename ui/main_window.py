@@ -9,8 +9,10 @@ import logging
 from typing import Any, Callable, Optional
 
 from PyQt6 import QtWidgets, QtGui, QtCore
-
 from config import APP_NAME, APP_VERSION, STYLESHEET_PATH, ensure_data_dir
+
+# Local UI components
+from .transaction_form import TransactionForm
 
 logger = logging.getLogger(__name__)
 
@@ -215,7 +217,57 @@ class MainWindow(QtWidgets.QMainWindow):
         """Handle Add button clicked (open transaction form / create new entry)."""
         logger.debug("on_add_clicked")
         self.status.showMessage("Adding transaction...")
-        # TODO: open TransactionForm and persist new transaction
+        # Open the transaction form dialog and persist via db_manager if accepted
+        try:
+            dlg = TransactionForm(self, db_manager=self.db_manager)
+        except Exception:
+            logger.exception("Failed creating TransactionForm")
+            self.show_error("Error", "Unable to open transaction form")
+            return
+
+        if dlg.exec():
+            tx = dlg.get_transaction()
+            if not tx:
+                self.status.showMessage("No transaction data")
+                return
+
+            if not getattr(self, "db_manager", None):
+                self.show_error("No database", "No database available to save transaction")
+                return
+
+            def _on_saved(res):
+                # res expected to be new id or False/None on failure
+                if isinstance(res, Exception) or not res:
+                    self.show_error("Save failed", "Failed to save transaction")
+                    self.status.showMessage("Save failed")
+                    return
+                self.update_text(f"Transaction added (id={res})")
+                self.status.showMessage("Transaction saved")
+                # refresh transactions view if implemented
+                try:
+                    self.load_transactions()
+                except Exception:
+                    logger.exception("Failed reloading transactions after save")
+
+            # Run DB save in background to avoid blocking UI
+            try:
+                self.run_db_task(self.db_manager.add_transaction, _on_saved, tx)
+                self.status.showMessage("Saving transaction...")
+            except Exception:
+                logger.exception("Failed to start background save task")
+                # fallback to synchronous save
+                try:
+                    nid = self.db_manager.add_transaction(tx)
+                    if nid:
+                        self.update_text(f"Transaction added (id={nid})")
+                        self.load_transactions()
+                        self.status.showMessage("Transaction saved")
+                    else:
+                        self.show_error("Save failed", "Failed to save transaction")
+                        self.status.showMessage("Save failed")
+                except Exception as e:
+                    logger.exception("Synchronous save failed")
+                    self.show_error("Save failed", str(e))
 
     def on_edit_clicked(self) -> None:
         """Handle Edit button clicked (edit selected transaction)."""
