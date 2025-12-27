@@ -62,6 +62,15 @@ class MainWindow(QtWidgets.QMainWindow):
         self.text_display.setReadOnly(True)
         main_layout.addWidget(self.text_display)
 
+        # Transactions table (select rows to edit/delete)
+        self.tx_table = QtWidgets.QTableWidget(0, 5)
+        self.tx_table.setHorizontalHeaderLabels(["ID", "Date", "Description", "Category", "Amount"])
+        self.tx_table.horizontalHeader().setStretchLastSection(True)
+        self.tx_table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows)
+        self.tx_table.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.SingleSelection)
+        self.tx_table.verticalHeader().setVisible(False)
+        main_layout.addWidget(self.tx_table)
+
         # Transactions group
         transaction_group = QtWidgets.QGroupBox("Transactions")
         t_layout = QtWidgets.QHBoxLayout()
@@ -190,13 +199,17 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.status.showMessage("Load failed")
                 return
 
-            # If the class defines a _populate_transactions method, use it.
-            if hasattr(self, "_populate_transactions"):
-                try:
-                    self._populate_transactions(result)
-                    self.status.showMessage("Transactions loaded")
-                except Exception as e:
+            # Populate transactions table
+            try:
+                self._populate_transactions(result)
+                self.status.showMessage("Transactions loaded")
+            except Exception as e:
+                # fall back if method missing or fails
+                if hasattr(self, "_populate_transactions"):
                     self.show_error("UI update failed", "Failed updating UI with transactions", e)
+                else:
+                    logger.debug("No _populate_transactions found; result ignored")
+                    self.status.showMessage("Transactions loaded (no UI handler)")
             else:
                 logger.debug("No _populate_transactions found; result ignored")
                 self.status.showMessage("Transactions loaded (no UI handler)")
@@ -205,6 +218,47 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def update_text(self, message: str):
         self.text_display.append(message)
+
+    def _populate_transactions(self, rows):
+        """Populate the transactions table with a list of dict-like rows."""
+        try:
+            if not rows:
+                # clear table
+                self.tx_table.setRowCount(0)
+                return
+
+            self.tx_table.setRowCount(len(rows))
+            for r_idx, r in enumerate(rows):
+                tid = r.get("id")
+                date = r.get("date", "")
+                desc = r.get("description", "")
+                cat = r.get("category", "")
+                amt = r.get("amount", 0)
+
+                self.tx_table.setItem(r_idx, 0, QtWidgets.QTableWidgetItem(str(tid)))
+                self.tx_table.setItem(r_idx, 1, QtWidgets.QTableWidgetItem(str(date)))
+                self.tx_table.setItem(r_idx, 2, QtWidgets.QTableWidgetItem(str(desc)))
+                self.tx_table.setItem(r_idx, 3, QtWidgets.QTableWidgetItem(str(cat)))
+                self.tx_table.setItem(r_idx, 4, QtWidgets.QTableWidgetItem(f"{amt:.2f}"))
+
+            # Resize columns reasonably
+            self.tx_table.resizeColumnsToContents()
+        except Exception:
+            logger.exception("Failed populating transactions table")
+
+    def _get_selected_transaction_id(self) -> Optional[int]:
+        """Return the transaction ID for the currently selected row, or None."""
+        sel = self.tx_table.selectionModel().selectedRows()
+        if not sel:
+            return None
+        try:
+            row = sel[0].row()
+            item = self.tx_table.item(row, 0)
+            if item:
+                return int(item.text())
+        except Exception:
+            logger.exception("Failed reading selected transaction id")
+        return None
 
     def closeEvent(self, event):
         try:
@@ -285,7 +339,75 @@ class MainWindow(QtWidgets.QMainWindow):
         """Handle Edit button clicked (edit selected transaction)."""
         logger.debug("on_edit_clicked")
         self.status.showMessage("Editing transaction...")
-        # TODO: open selected transaction in TransactionForm
+        # Ensure DB present
+        if not getattr(self, "db_manager", None):
+            try:
+                dm = DatabaseManager()
+                dm.ensure_database()
+                self.db_manager = dm
+            except Exception:
+                logger.exception("Failed creating/initializing DatabaseManager for edit")
+                self.show_error("No database", "No database available to edit transaction")
+                return
+
+        tx_id = self._get_selected_transaction_id()
+        if tx_id is None:
+            QtWidgets.QMessageBox.information(self, "Select transaction", "Please select a transaction to edit from the table.")
+            self.status.showMessage("No transaction selected")
+            return
+
+        def _on_fetched(res):
+            if isinstance(res, Exception) or not res:
+                self.show_error("Load failed", "Failed to load transaction for editing")
+                self.status.showMessage("Load failed")
+                return
+
+            try:
+                # open transaction form prefilled
+                dlg = TransactionForm(self, db_manager=self.db_manager, transaction=res)
+                if dlg.exec():
+                    updated = dlg.get_transaction()
+                    if not updated:
+                        self.status.showMessage("No changes made")
+                        return
+
+                    def _on_updated(r2):
+                        if isinstance(r2, Exception) or not r2:
+                            self.show_error("Update failed", "Failed to update transaction")
+                            self.status.showMessage("Update failed")
+                            return
+                        self.update_text(f"Transaction updated (id={tx_id})")
+                        self.status.showMessage("Transaction updated")
+                        try:
+                            self.load_transactions()
+                        except Exception:
+                            logger.exception("Failed reloading transactions after update")
+
+                    # Ensure id included for update
+                    updated["id"] = tx_id
+                    try:
+                        self.run_db_task(self.db_manager.update_transaction, _on_updated, updated)
+                    except Exception:
+                        # fallback
+                        ok = self.db_manager.update_transaction(updated)
+                        if ok:
+                            self.update_text(f"Transaction updated (id={tx_id})")
+                            self.load_transactions()
+                            self.status.showMessage("Transaction updated")
+                        else:
+                            self.show_error("Update failed", "Failed to update transaction")
+            except Exception:
+                logger.exception("Failed handling fetched transaction for edit")
+
+        # fetch transaction by id in background
+        try:
+            self.run_db_task(self.db_manager.fetch_transaction_by_id, _on_fetched, tx_id)
+            self.status.showMessage("Loading transaction...")
+        except Exception:
+            logger.exception("Failed to start background fetch task")
+            # fallback synchronous
+            res = self.db_manager.fetch_transaction_by_id(tx_id)
+            _on_fetched(res)
 
     def on_delete_clicked(self) -> None:
         """Handle Delete button clicked (remove selected transaction)."""
