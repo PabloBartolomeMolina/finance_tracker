@@ -291,7 +291,69 @@ class MainWindow(QtWidgets.QMainWindow):
         """Handle Delete button clicked (remove selected transaction)."""
         logger.debug("on_delete_clicked")
         self.status.showMessage("Deleting transaction...")
-        # TODO: confirm and delete selected transaction
+        # If no DB manager, ensure one exists (create DB if necessary)
+        if not getattr(self, "db_manager", None):
+            try:
+                dm = DatabaseManager()
+                dm.ensure_database()
+                self.db_manager = dm
+            except Exception:
+                logger.exception("Failed creating/initializing DatabaseManager for delete")
+                self.show_error("No database", "No database available to delete transaction")
+                return
+
+        # Prompt user for transaction id to delete (fallback when no selection UI exists)
+        try:
+            tid, ok = QtWidgets.QInputDialog.getInt(self, "Delete transaction", "Transaction ID:", min=1)
+        except Exception:
+            logger.exception("Failed showing input dialog for delete")
+            return
+
+        if not ok:
+            self.status.showMessage("Delete cancelled")
+            return
+
+        # Confirm
+        reply = QtWidgets.QMessageBox.question(
+            self,
+            "Confirm delete",
+            f"Are you sure you want to delete transaction id={tid}?",
+            QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No,
+        )
+        if reply != QtWidgets.QMessageBox.StandardButton.Yes:
+            self.status.showMessage("Delete cancelled")
+            return
+
+        def _on_deleted(res):
+            if isinstance(res, Exception) or not res:
+                self.show_error("Delete failed", "Failed to delete transaction")
+                self.status.showMessage("Delete failed")
+                return
+            self.update_text(f"Transaction deleted (id={tid})")
+            self.status.showMessage("Transaction deleted")
+            try:
+                self.load_transactions()
+            except Exception:
+                logger.exception("Failed reloading transactions after delete")
+
+        try:
+            self.run_db_task(self.db_manager.delete_transaction, _on_deleted, tid)
+            self.status.showMessage("Deleting transaction...")
+        except Exception:
+            logger.exception("Failed to start background delete task")
+            # fallback to synchronous delete
+            try:
+                ok = self.db_manager.delete_transaction(tid)
+                if ok:
+                    self.update_text(f"Transaction deleted (id={tid})")
+                    self.load_transactions()
+                    self.status.showMessage("Transaction deleted")
+                else:
+                    self.show_error("Delete failed", "Failed to delete transaction")
+                    self.status.showMessage("Delete failed")
+            except Exception as e:
+                logger.exception("Synchronous delete failed")
+                self.show_error("Delete failed", str(e))
 
     def on_filter_search_clicked(self) -> None:
         """Handle Filter/Search button clicked (open search/filter UI)."""
