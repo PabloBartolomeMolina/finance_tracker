@@ -11,6 +11,7 @@ env/
 
 # SQLite database
 data/finance.db
+data/finance_tracker.db
 
 # PyQt Designer generated files (if you generate .ui files and compile)
 *.py~ 
