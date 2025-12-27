@@ -70,6 +70,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.tx_table.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.SingleSelection)
         self.tx_table.verticalHeader().setVisible(False)
         main_layout.addWidget(self.tx_table)
+        # Connect row selection to highlight
+        self.tx_table.selectionModel().selectionChanged.connect(self._on_table_selection_changed)
 
         # Transactions group
         transaction_group = QtWidgets.QGroupBox("Transactions")
@@ -140,6 +142,9 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.setMinimumSize(800, 600)
         except Exception:
             logger.exception("Failed to restore/set window geometry")
+
+        # track highlighted row for edit visual cue
+        self._highlighted_row = None
 
     def _apply_stylesheet(self) -> None:
         """Load and apply a stylesheet if the file exists; otherwise skip quietly."""
@@ -276,6 +281,34 @@ class MainWindow(QtWidgets.QMainWindow):
             logger.exception("Failed reading selected transaction id")
         return None
 
+    def _get_selected_row_index(self) -> Optional[int]:
+        sel = self.tx_table.selectionModel().selectedRows()
+        if not sel:
+            return None
+        return sel[0].row()
+
+    def _on_table_selection_changed(self):
+        """Highlight the selected row whenever selection changes."""
+        row_idx = self._get_selected_row_index()
+        if row_idx is None:
+            return
+        try:
+            # Clear previous highlight
+            if self._highlighted_row is not None and self._highlighted_row != row_idx:
+                for col in range(self.tx_table.columnCount()):
+                    item = self.tx_table.item(self._highlighted_row, col)
+                    if item:
+                        item.setBackground(QtGui.QBrush())
+            # Apply new highlight
+            brush = QtGui.QBrush(QtGui.QColor(173, 216, 230))  # light blue
+            for col in range(self.tx_table.columnCount()):
+                item = self.tx_table.item(row_idx, col)
+                if item:
+                    item.setBackground(brush)
+            self._highlighted_row = row_idx
+        except Exception:
+            logger.exception("Failed highlighting selected row")
+
     def closeEvent(self, event):
         try:
             settings = QtCore.QSettings("pbm", APP_NAME)
@@ -352,9 +385,9 @@ class MainWindow(QtWidgets.QMainWindow):
                     self.show_error("Save failed", str(e))
 
     def on_edit_clicked(self) -> None:
-        """Handle Edit button clicked (edit selected transaction)."""
         logger.debug("on_edit_clicked")
         self.status.showMessage("Editing transaction...")
+
         # Ensure DB present
         if not getattr(self, "db_manager", None):
             try:
@@ -367,10 +400,13 @@ class MainWindow(QtWidgets.QMainWindow):
                 return
 
         tx_id = self._get_selected_transaction_id()
-        if tx_id is None:
+        row_idx = self._get_selected_row_index()
+        if tx_id is None or row_idx is None:
             QtWidgets.QMessageBox.information(self, "Select transaction", "Please select a transaction to edit from the table.")
             self.status.showMessage("No transaction selected")
             return
+
+        # (row is already highlighted by _on_table_selection_changed)
 
         def _on_fetched(res):
             if isinstance(res, Exception) or not res:
@@ -404,7 +440,6 @@ class MainWindow(QtWidgets.QMainWindow):
                     try:
                         self.run_db_task(self.db_manager.update_transaction, _on_updated, updated)
                     except Exception:
-                        # fallback
                         ok = self.db_manager.update_transaction(updated)
                         if ok:
                             self.update_text(f"Transaction updated (id={tx_id})")
@@ -421,7 +456,6 @@ class MainWindow(QtWidgets.QMainWindow):
             self.status.showMessage("Loading transaction...")
         except Exception:
             logger.exception("Failed to start background fetch task")
-            # fallback synchronous
             res = self.db_manager.fetch_transaction_by_id(tx_id)
             _on_fetched(res)
 
