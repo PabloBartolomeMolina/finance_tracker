@@ -13,6 +13,7 @@ from config import APP_NAME, APP_VERSION, STYLESHEET_PATH, ensure_data_dir
 
 # Local UI components
 from .transaction_form import TransactionForm
+from database.db_manager import DatabaseManager
 
 logger = logging.getLogger(__name__)
 
@@ -217,6 +218,17 @@ class MainWindow(QtWidgets.QMainWindow):
         """Handle Add button clicked (open transaction form / create new entry)."""
         logger.debug("on_add_clicked")
         self.status.showMessage("Adding transaction...")
+        # Ensure a DatabaseManager exists (create DB if needed) before opening form
+        if not getattr(self, "db_manager", None):
+            try:
+                dm = DatabaseManager()
+                dm.ensure_database()
+                self.db_manager = dm
+            except Exception:
+                logger.exception("Failed creating/initializing DatabaseManager")
+                self.show_error("No database", "No database available to save transaction")
+                return
+
         # Open the transaction form dialog and persist via db_manager if accepted
         try:
             dlg = TransactionForm(self, db_manager=self.db_manager)
