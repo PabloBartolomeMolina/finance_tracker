@@ -4,7 +4,8 @@
 */
 
 QWidget {
-    background-color: #f5f7fa;
+    /* soft grey general background for the application window */
+    background-color: #999da1;
     color: #222222;
     font-family: "Segoe UI", Tahoma, Arial, sans-serif;
     font-size: 10pt;
