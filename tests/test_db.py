@@ -1,6 +1,6 @@
 '''
     File Name: test_db.py
-    Version: 1.0.0
+    Version: 2.0.1
     Date: 16/09/2025
     Author: Pablo Bartolomé Molina
 '''
@@ -10,6 +10,8 @@ from pathlib import Path
 import pytest
 
 from database.db_manager import DatabaseManager
+
+EPSILON = 1e-6
 
 
 def test_ensure_and_fetch_empty(tmp_path):
@@ -30,7 +32,7 @@ def test_add_and_fetch_transaction(tmp_path):
     fetched = dm.fetch_transaction_by_id(nid)
     assert fetched is not None
     assert fetched["description"] == "Coffee"
-    assert abs(float(fetched["amount"]) - 2.5) < 1e-6
+    assert abs(float(fetched["amount"]) - 2.5) < EPSILON
     assert fetched["category"] == "Food"
     all_txs = dm.fetch_transactions()
     assert any(t["id"] == nid for t in all_txs)
@@ -50,7 +52,7 @@ def test_update_transaction(tmp_path):
     assert ok
     fetched = dm.fetch_transaction_by_id(nid)
     assert fetched["description"] == "Rent Dec"
-    assert abs(float(fetched["amount"]) - 550) < 1e-6
+    assert abs(float(fetched["amount"]) - 550) < EPSILON
 
 
 def test_delete_transaction(tmp_path):
