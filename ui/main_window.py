@@ -13,6 +13,7 @@ from config import APP_NAME, APP_VERSION, STYLESHEET_PATH, ensure_data_dir
 
 # Local UI components
 from .transaction_form import TransactionForm
+from .filter_dialog import FilterDialog
 from database.db_manager import DatabaseManager
 
 logger = logging.getLogger(__name__)
@@ -531,7 +532,70 @@ class MainWindow(QtWidgets.QMainWindow):
         """Handle Filter/Search button clicked (open search/filter UI)."""
         logger.debug("on_filter_search_clicked")
         self.status.showMessage("Opening filter/search...")
-        # TODO: open filter/search dialog or panel
+
+        # Ensure DB present (create if necessary) so we can fetch categories and perform filtered queries
+        if not getattr(self, "db_manager", None):
+            try:
+                dm = DatabaseManager()
+                dm.ensure_database()
+                self.db_manager = dm
+            except Exception:
+                logger.exception("Failed creating/initializing DatabaseManager for filter/search")
+                self.show_error("No database", "No database available for filtering/searching")
+                return
+
+        # Try to gather existing categories to populate dialog (best-effort)
+        categories = []
+        try:
+            fetch_cats = getattr(self.db_manager, "fetch_categories", None)
+            if callable(fetch_cats):
+                try:
+                    categories = [c.get("name") for c in self.db_manager.fetch_categories()] or []
+                except Exception:
+                    logger.exception("Failed fetching categories for filter dialog")
+        except Exception:
+            logger.exception("Unexpected error while preparing filter dialog")
+
+        # Open dialog
+        try:
+            dlg = FilterDialog(self, categories=categories)
+        except Exception:
+            logger.exception("Failed creating FilterDialog")
+            self.show_error("Error", "Unable to open filter/search dialog")
+            return
+
+        if dlg.exec():
+            filters, limit = dlg.get_filters()
+            self.status.showMessage("Applying filters...")
+
+            def _on_loaded(result):
+                if isinstance(result, Exception):
+                    self.show_error("Filter failed", "Failed to fetch filtered transactions", result)
+                    self.status.showMessage("Filter failed")
+                    return
+
+                try:
+                    self._populate_transactions(result)
+                    self.status.showMessage("Filter applied")
+                except Exception as e:
+                    if hasattr(self, "_populate_transactions"):
+                        self.show_error("UI update failed", "Failed updating UI with filtered results", e)
+                    else:
+                        logger.debug("No _populate_transactions found; result ignored")
+                        self.status.showMessage("Filter applied (no UI handler)")
+
+            # Run filtered fetch in background
+            try:
+                self.run_db_task(self.db_manager.fetch_transactions, _on_loaded, filters, limit)
+            except Exception:
+                logger.exception("Failed to start background filter task")
+                # fallback to synchronous
+                try:
+                    res = self.db_manager.fetch_transactions(filters, limit)
+                    _on_loaded(res)
+                except Exception as e:
+                    logger.exception("Synchronous filter failed")
+                    self.show_error("Filter failed", str(e))
 
     def on_statistics_clicked(self) -> None:
         """Handle Statistics button clicked (show reports/graphs)."""
