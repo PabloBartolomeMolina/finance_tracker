@@ -652,24 +652,26 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.show_error("No database", "No database available for import/export")
                 return
 
-        # Ask user whether to import or export
-        reply = QtWidgets.QMessageBox.question(
-            self,
-            "Import or Export",
-            "What would you like to do?",
-            QtWidgets.QMessageBox.StandardButton.Yes |
-            QtWidgets.QMessageBox.StandardButton.No |
-            QtWidgets.QMessageBox.StandardButton.Cancel,
-        )
-
-        if reply == QtWidgets.QMessageBox.StandardButton.Cancel:
+        # Create dialog with custom buttons
+        msg_box = QtWidgets.QMessageBox(self)
+        msg_box.setWindowTitle("Import or Export")
+        msg_box.setText("What would you like to do?")
+        msg_box.setIcon(QtWidgets.QMessageBox.Icon.Question)
+        
+        export_btn = msg_box.addButton("Export", QtWidgets.QMessageBox.ButtonRole.AcceptRole)
+        import_btn = msg_box.addButton("Import", QtWidgets.QMessageBox.ButtonRole.AcceptRole)
+        cancel_btn = msg_box.addButton(QtWidgets.QMessageBox.StandardButton.Cancel)
+        
+        msg_box.exec()
+        
+        clicked_btn = msg_box.clickedButton()
+        
+        if clicked_btn == cancel_btn or clicked_btn is None:
             self.status.showMessage("Import/Export cancelled")
             return
-        elif reply == QtWidgets.QMessageBox.StandardButton.Yes:
-            # Export
+        elif clicked_btn == export_btn:
             self._handle_export()
-        else:
-            # Import
+        elif clicked_btn == import_btn:
             self._handle_import()
 
     def _handle_export(self) -> None:

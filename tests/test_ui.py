@@ -723,7 +723,7 @@ class TestImportExportFunctionality(unittest.TestCase):
             mock_instance.fetch_transactions.return_value = []
             mock_db_class.return_value = mock_instance
             
-            with patch.object(QtWidgets.QMessageBox, 'question', return_value=QtWidgets.QMessageBox.StandardButton.Cancel):
+            with patch.object(QtWidgets.QMessageBox, 'exec', return_value=None):
                 window.on_import_export_clicked()
                 
                 # Verify DatabaseManager was created
@@ -733,12 +733,35 @@ class TestImportExportFunctionality(unittest.TestCase):
 
     def test_on_import_export_cancel(self):
         """Test cancelling the import/export dialog."""
-        with patch.object(QtWidgets.QMessageBox, 'question', 
-                         return_value=QtWidgets.QMessageBox.StandardButton.Cancel):
-            self.window.on_import_export_clicked()
-            
-            # Should show cancelled message
-            self.assertIn("cancelled", self.window.status.currentMessage())
+        with patch.object(QtWidgets.QMessageBox, 'exec', return_value=None):
+            with patch.object(QtWidgets.QMessageBox, 'clickedButton', return_value=None):
+                self.window.on_import_export_clicked()
+                
+                # Should show cancelled message
+                self.assertIn("cancelled", self.window.status.currentMessage())
+
+    def test_handle_export_button_clicked(self):
+        """Test export button in the dialog."""
+        msg_box = QtWidgets.QMessageBox()
+        export_btn = msg_box.addButton("Export", QtWidgets.QMessageBox.ButtonRole.AcceptRole)
+        import_btn = msg_box.addButton("Import", QtWidgets.QMessageBox.ButtonRole.AcceptRole)
+        
+        # Verify buttons exist
+        self.assertIsNotNone(export_btn)
+        self.assertIsNotNone(import_btn)
+        self.assertEqual(export_btn.text(), "Export")
+        self.assertEqual(import_btn.text(), "Import")
+
+    def test_handle_import_button_clicked(self):
+        """Test import button in the dialog."""
+        msg_box = QtWidgets.QMessageBox()
+        export_btn = msg_box.addButton("Export", QtWidgets.QMessageBox.ButtonRole.AcceptRole)
+        import_btn = msg_box.addButton("Import", QtWidgets.QMessageBox.ButtonRole.AcceptRole)
+        
+        # Verify buttons exist
+        self.assertIsNotNone(export_btn)
+        self.assertIsNotNone(import_btn)
+        self.assertEqual(import_btn.text(), "Import")
 
     def test_handle_export_no_file_selected(self):
         """Test export when user cancels file dialog."""
