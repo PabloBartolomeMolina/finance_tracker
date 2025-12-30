@@ -601,7 +601,40 @@ class MainWindow(QtWidgets.QMainWindow):
         """Handle Statistics button clicked (show reports/graphs)."""
         logger.debug("on_statistics_clicked")
         self.status.showMessage("Showing statistics...")
-        # TODO: build and display statistics view
+
+        # Ensure DB present (create if necessary) so we can fetch transactions for the report
+        if not getattr(self, "db_manager", None):
+            try:
+                dm = DatabaseManager()
+                dm.ensure_database()
+                self.db_manager = dm
+            except Exception:
+                logger.exception("Failed creating/initializing DatabaseManager for statistics")
+                self.show_error("No database", "No database available to generate statistics")
+                return
+
+        # Create and display the reports view in a dialog
+        try:
+            from .reports_view import ReportsView
+            
+            dialog = QtWidgets.QDialog(self)
+            dialog.setWindowTitle("Reports & Statistics")
+            dialog.setGeometry(100, 100, 1000, 600)
+            
+            # Create the reports view with the database manager
+            reports_view = ReportsView(parent=dialog, db_manager=self.db_manager)
+            
+            # Add the reports view to the dialog
+            layout = QtWidgets.QVBoxLayout()
+            layout.addWidget(reports_view)
+            dialog.setLayout(layout)
+            
+            # Show the dialog
+            dialog.exec()
+            self.status.showMessage("Statistics dialog closed")
+        except Exception:
+            logger.exception("Failed creating/displaying statistics view")
+            self.show_error("Error", "Unable to open statistics view")
 
     def on_import_export_clicked(self) -> None:
         """Handle Import/Export button clicked (import or export data)."""
