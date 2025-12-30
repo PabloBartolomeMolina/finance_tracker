@@ -33,3 +33,6 @@ build/
 # IDE files (optional)
 .vscode/
 .idea/
+
+# Other files
+*.csv
