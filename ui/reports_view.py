@@ -41,6 +41,9 @@ class ReportsView(QWidget):
         self._canvas = FigureCanvas(self._figure)
         self._canvas.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self._toolbar = NavigationToolbar2QT(self._canvas, self)
+        
+        # Create a single axis that we'll reuse for all plots
+        self._ax = self._figure.add_subplot(111)
 
         self.setup_ui()
         
@@ -141,8 +144,8 @@ class ReportsView(QWidget):
 
     def plot_data(self) -> None:
         """Plot based on current chart type and available data."""
-        ax = self._figure.subplots()
-        ax.clear()
+        # Clear the existing axis without recreating it
+        self._ax.clear()
 
         # Convert to DataFrame
         df = None
@@ -155,30 +158,28 @@ class ReportsView(QWidget):
 
         # Handle empty state
         if not self._transactions or df is None or df.empty:
-            ax.text(0.5, 0.5, "No transactions available\nAdd transactions to see statistics", 
+            self._ax.text(0.5, 0.5, "No transactions available\nAdd transactions to see statistics", 
                    ha="center", va="center", fontsize=12, color="#666666")
-            ax.set_xticks([])
-            ax.set_yticks([])
+            self._ax.set_xticks([])
+            self._ax.set_yticks([])
             self._update_stats(None)
-            self._figure.tight_layout()
             self._canvas.draw()
             return
 
         try:
             if self._current_chart_type == "category":
-                self._plot_by_category(ax, df)
+                self._plot_by_category(self._ax, df)
             elif self._current_chart_type == "month":
-                self._plot_by_month(ax, df)
+                self._plot_by_month(self._ax, df)
             elif self._current_chart_type == "summary":
-                self._plot_summary(ax, df)
+                self._plot_summary(self._ax, df)
             
             self._update_stats(df)
-            self._figure.tight_layout()
             self._canvas.draw()
         except Exception:
             logger.exception("Failed to plot data for chart type: %s", self._current_chart_type)
-            ax.clear()
-            ax.text(0.5, 0.5, "Error rendering chart", ha="center", va="center")
+            self._ax.clear()
+            self._ax.text(0.5, 0.5, "Error rendering chart", ha="center", va="center")
             self._canvas.draw()
 
     def _plot_by_category(self, ax, df) -> None:
