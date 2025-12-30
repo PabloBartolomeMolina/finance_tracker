@@ -640,7 +640,164 @@ class MainWindow(QtWidgets.QMainWindow):
         """Handle Import/Export button clicked (import or export data)."""
         logger.debug("on_import_export_clicked")
         self.status.showMessage("Import / Export...")
-        # TODO: open import/export workflow
+
+        # Ensure DB present (create if necessary)
+        if not getattr(self, "db_manager", None):
+            try:
+                dm = DatabaseManager()
+                dm.ensure_database()
+                self.db_manager = dm
+            except Exception:
+                logger.exception("Failed creating/initializing DatabaseManager for import/export")
+                self.show_error("No database", "No database available for import/export")
+                return
+
+        # Ask user whether to import or export
+        reply = QtWidgets.QMessageBox.question(
+            self,
+            "Import or Export",
+            "What would you like to do?",
+            QtWidgets.QMessageBox.StandardButton.Yes |
+            QtWidgets.QMessageBox.StandardButton.No |
+            QtWidgets.QMessageBox.StandardButton.Cancel,
+        )
+
+        if reply == QtWidgets.QMessageBox.StandardButton.Cancel:
+            self.status.showMessage("Import/Export cancelled")
+            return
+        elif reply == QtWidgets.QMessageBox.StandardButton.Yes:
+            # Export
+            self._handle_export()
+        else:
+            # Import
+            self._handle_import()
+
+    def _handle_export(self) -> None:
+        """Handle exporting transactions to CSV file."""
+        logger.debug("_handle_export")
+        
+        # Ask user for file location
+        file_path, _ = QtWidgets.QFileDialog.getSaveFileName(
+            self,
+            "Export Transactions",
+            "",
+            "CSV Files (*.csv);;All Files (*)",
+        )
+
+        if not file_path:
+            self.status.showMessage("Export cancelled")
+            return
+
+        def _on_export_done(result):
+            if isinstance(result, Exception) or not result:
+                self.show_error("Export failed", "Failed to export transactions")
+                self.status.showMessage("Export failed")
+                return
+            self.update_text(f"Transactions exported to {file_path}")
+            self.status.showMessage("Export successful")
+            QtWidgets.QMessageBox.information(self, "Success", f"Transactions exported to:\n{file_path}")
+
+        try:
+            from pathlib import Path
+            self.run_db_task(self.db_manager.export_to_csv, _on_export_done, Path(file_path))
+            self.status.showMessage("Exporting transactions...")
+        except Exception:
+            logger.exception("Failed to start background export task")
+            # Fallback to synchronous export
+            try:
+                from pathlib import Path
+                success = self.db_manager.export_to_csv(Path(file_path))
+                if success:
+                    self.update_text(f"Transactions exported to {file_path}")
+                    self.status.showMessage("Export successful")
+                    QtWidgets.QMessageBox.information(self, "Success", f"Transactions exported to:\n{file_path}")
+                else:
+                    self.show_error("Export failed", "Failed to export transactions")
+                    self.status.showMessage("Export failed")
+            except Exception as e:
+                logger.exception("Synchronous export failed")
+                self.show_error("Export failed", str(e))
+
+    def _handle_import(self) -> None:
+        """Handle importing transactions from CSV file."""
+        logger.debug("_handle_import")
+        
+        # Ask user for file to import
+        file_path, _ = QtWidgets.QFileDialog.getOpenFileName(
+            self,
+            "Import Transactions",
+            "",
+            "CSV Files (*.csv);;All Files (*)",
+        )
+
+        if not file_path:
+            self.status.showMessage("Import cancelled")
+            return
+
+        # Confirm import with user
+        reply = QtWidgets.QMessageBox.question(
+            self,
+            "Confirm Import",
+            f"Import transactions from:\n{file_path}\n\nThis will add transactions to your database.",
+            QtWidgets.QMessageBox.StandardButton.Yes |
+            QtWidgets.QMessageBox.StandardButton.No,
+        )
+
+        if reply != QtWidgets.QMessageBox.StandardButton.Yes:
+            self.status.showMessage("Import cancelled")
+            return
+
+        def _on_import_done(result):
+            if isinstance(result, Exception):
+                self.show_error("Import failed", f"Failed to import transactions: {str(result)}")
+                self.status.showMessage("Import failed")
+                return
+            
+            if result == 0:
+                self.show_error("Import warning", "No transactions were imported from the file")
+                self.status.showMessage("Import completed with no rows")
+                return
+            
+            self.update_text(f"Imported {result} transaction(s) from {file_path}")
+            self.status.showMessage(f"Import successful ({result} transactions)")
+            
+            # Refresh table to show imported data
+            try:
+                self.load_transactions()
+            except Exception:
+                logger.exception("Failed reloading transactions after import")
+            
+            QtWidgets.QMessageBox.information(
+                self,
+                "Success",
+                f"Successfully imported {result} transaction(s)"
+            )
+
+        try:
+            from pathlib import Path
+            self.run_db_task(self.db_manager.import_from_csv, _on_import_done, Path(file_path))
+            self.status.showMessage("Importing transactions...")
+        except Exception:
+            logger.exception("Failed to start background import task")
+            # Fallback to synchronous import
+            try:
+                from pathlib import Path
+                count = self.db_manager.import_from_csv(Path(file_path))
+                if count > 0:
+                    self.update_text(f"Imported {count} transaction(s) from {file_path}")
+                    self.status.showMessage(f"Import successful ({count} transactions)")
+                    self.load_transactions()
+                    QtWidgets.QMessageBox.information(
+                        self,
+                        "Success",
+                        f"Successfully imported {count} transaction(s)"
+                    )
+                else:
+                    self.show_error("Import warning", "No transactions were imported from the file")
+                    self.status.showMessage("Import completed with no rows")
+            except Exception as e:
+                logger.exception("Synchronous import failed")
+                self.show_error("Import failed", str(e))
     
     def ensure_db_ready(self) -> None:
         """Ensure the database file exists and is initialized."""

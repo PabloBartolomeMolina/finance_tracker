@@ -692,3 +692,151 @@ class TestMainWindowErrorHandling(unittest.TestCase):
         with patch.object(self.window, 'on_import_export_clicked') as mock_import:
             self.window.button6.clicked.emit()
             mock_import.assert_called_once()
+
+class TestImportExportFunctionality(unittest.TestCase):
+    """Test suite for import/export functionality."""
+
+    @classmethod
+    def setUpClass(cls):
+        """Initialize QApplication for all tests."""
+        if not QApplication.instance():
+            cls.app = QApplication(sys.argv)
+        else:
+            cls.app = QApplication.instance()
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.mock_db = MagicMock(spec=DatabaseManager)
+        self.mock_db.fetch_transactions.return_value = []
+        self.window = MainWindow(db_manager=self.mock_db)
+
+    def tearDown(self):
+        """Clean up after tests."""
+        self.window.deleteLater()
+
+    def test_on_import_export_clicked_without_db(self):
+        """Test import/export when db_manager needs to be created."""
+        window = MainWindow(db_manager=None)
+        
+        with patch('ui.main_window.DatabaseManager') as mock_db_class:
+            mock_instance = MagicMock()
+            mock_instance.fetch_transactions.return_value = []
+            mock_db_class.return_value = mock_instance
+            
+            with patch.object(QtWidgets.QMessageBox, 'question', return_value=QtWidgets.QMessageBox.StandardButton.Cancel):
+                window.on_import_export_clicked()
+                
+                # Verify DatabaseManager was created
+                mock_instance.ensure_database.assert_called_once()
+
+        window.deleteLater()
+
+    def test_on_import_export_cancel(self):
+        """Test cancelling the import/export dialog."""
+        with patch.object(QtWidgets.QMessageBox, 'question', 
+                         return_value=QtWidgets.QMessageBox.StandardButton.Cancel):
+            self.window.on_import_export_clicked()
+            
+            # Should show cancelled message
+            self.assertIn("cancelled", self.window.status.currentMessage())
+
+    def test_handle_export_no_file_selected(self):
+        """Test export when user cancels file dialog."""
+        with patch.object(QtWidgets.QFileDialog, 'getSaveFileName', return_value=("", "")):
+            self.window._handle_export()
+            
+            # Should show cancelled message
+            self.assertIn("cancelled", self.window.status.currentMessage())
+
+    def test_handle_export_success(self):
+        """Test successful export."""
+        with patch.object(QtWidgets.QFileDialog, 'getSaveFileName', 
+                         return_value=("/tmp/export.csv", "")):
+            with patch.object(QtWidgets.QMessageBox, 'information') as mock_info:
+                self.mock_db.export_to_csv.return_value = True
+                
+                self.window._handle_export()
+                
+                # Verify export was called
+                self.mock_db.export_to_csv.assert_called()
+
+    def test_handle_export_failure(self):
+        """Test export failure."""
+        with patch.object(QtWidgets.QFileDialog, 'getSaveFileName', 
+                         return_value=("/tmp/export.csv", "")):
+            with patch.object(self.window, 'show_error') as mock_error:
+                self.mock_db.export_to_csv.return_value = False
+                
+                self.window._handle_export()
+                
+                # Let background task complete
+                import time
+                time.sleep(0.5)
+
+    def test_handle_import_no_file_selected(self):
+        """Test import when user cancels file dialog."""
+        with patch.object(QtWidgets.QFileDialog, 'getOpenFileName', return_value=("", "")):
+            self.window._handle_import()
+            
+            # Should show cancelled message
+            self.assertIn("cancelled", self.window.status.currentMessage())
+
+    def test_handle_import_user_cancels_confirmation(self):
+        """Test import when user cancels confirmation dialog."""
+        with patch.object(QtWidgets.QFileDialog, 'getOpenFileName', 
+                         return_value=("/tmp/import.csv", "")):
+            with patch.object(QtWidgets.QMessageBox, 'question',
+                             return_value=QtWidgets.QMessageBox.StandardButton.No):
+                self.window._handle_import()
+                
+                # Should show cancelled message
+                self.assertIn("cancelled", self.window.status.currentMessage())
+
+    def test_handle_import_success(self):
+        """Test successful import."""
+        with patch.object(QtWidgets.QFileDialog, 'getOpenFileName', 
+                         return_value=("/tmp/import.csv", "")):
+            with patch.object(QtWidgets.QMessageBox, 'question',
+                             return_value=QtWidgets.QMessageBox.StandardButton.Yes):
+                with patch.object(QtWidgets.QMessageBox, 'information') as mock_info:
+                    self.mock_db.import_from_csv.return_value = 5
+                    
+                    self.window._handle_import()
+                    
+                    # Verify import was called
+                    self.mock_db.import_from_csv.assert_called()
+
+    def test_handle_import_no_rows(self):
+        """Test import when no rows are imported."""
+        with patch.object(QtWidgets.QFileDialog, 'getOpenFileName', 
+                         return_value=("/tmp/import.csv", "")):
+            with patch.object(QtWidgets.QMessageBox, 'question',
+                             return_value=QtWidgets.QMessageBox.StandardButton.Yes):
+                with patch.object(self.window, 'show_error') as mock_error:
+                    self.mock_db.import_from_csv.return_value = 0
+                    
+                    self.window._handle_import()
+                    
+                    # Let background task complete
+                    import time
+                    time.sleep(0.5)
+
+    def test_import_refreshes_transactions(self):
+        """Test that import refreshes the transaction table."""
+        with patch.object(QtWidgets.QFileDialog, 'getOpenFileName', 
+                         return_value=("/tmp/import.csv", "")):
+            with patch.object(QtWidgets.QMessageBox, 'question',
+                             return_value=QtWidgets.QMessageBox.StandardButton.Yes):
+                with patch.object(QtWidgets.QMessageBox, 'information'):
+                    with patch.object(self.window, 'load_transactions') as mock_load:
+                        self.mock_db.import_from_csv.return_value = 3
+                        
+                        self.window._handle_import()
+                        
+                        # Let background task complete
+                        import time
+                        time.sleep(0.5)
+
+
+if __name__ == "__main__":
+    unittest.main()
