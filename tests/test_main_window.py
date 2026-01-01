@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from PyQt6 import QtCore
+from PyQt6 import QtCore, QtWidgets
 
 import config
 from ui.main_window import MainWindow
@@ -86,3 +86,138 @@ def test_load_transactions_with_db_manager_calls_populate(qtbot):
     mw.load_transactions()
     qtbot.waitUntil(lambda: len(captured) == 1, timeout=2000)
     assert captured[0] == [{"id": 1, "amount": 100}]
+
+
+def test_on_add_clicked_saves_transaction_and_updates_ui(qtbot, monkeypatch):
+    mw = MainWindow()
+    qtbot.addWidget(mw)
+
+    # Fake dialog that returns a transaction when accepted
+    class FakeDlg:
+        def __init__(self, parent=None, db_manager=None, transaction=None):
+            pass
+
+        def exec(self):
+            return True
+
+        def get_transaction(self):
+            return {"description": "Test Add", "amount": 12.34, "date": "2025-01-01", "category": "Test"}
+
+    monkeypatch.setattr("ui.main_window.TransactionForm", FakeDlg)
+
+    # Provide a fake DB manager and synchronous run_db_task
+    class FakeDB:
+        def __init__(self):
+            self.added = []
+
+        def add_transaction(self, tx):
+            self.added.append(tx)
+            return 123
+
+    fake_db = FakeDB()
+    mw.db_manager = fake_db
+
+    # Make run_db_task call synchronously and invoke the on_done callback
+    def sync_run(fn, on_done=None, *args, **kwargs):
+        res = fn(*args, **kwargs)
+        if on_done:
+            on_done(res)
+
+    mw.run_db_task = sync_run
+    # Prevent load_transactions side-effects
+    mw.load_transactions = lambda: None
+
+    mw.on_add_clicked()
+
+    # verify db called and UI updated
+    assert fake_db.added
+    assert "Transaction added (id=123)" in mw.text_display.toPlainText()
+    assert mw.status.currentMessage().lower().startswith("transaction")
+
+
+def test_on_delete_clicked_confirms_and_deletes(qtbot, monkeypatch):
+    mw = MainWindow()
+    qtbot.addWidget(mw)
+
+    # Provide fake DB manager
+    class FakeDB:
+        def delete_transaction(self, tid):
+            return True
+
+    mw.db_manager = FakeDB()
+
+    # Monkeypatch input dialog to return id 10 and accepted
+    monkeypatch.setattr("ui.main_window.QtWidgets.QInputDialog.getInt", lambda *a, **k: (10, True))
+    # Monkeypatch confirmation dialog to return Yes
+    monkeypatch.setattr(
+        "ui.main_window.QtWidgets.QMessageBox.question",
+        lambda *a, **k: QtWidgets.QMessageBox.StandardButton.Yes,
+    )
+
+    # synchronous run
+    def sync_run(fn, on_done=None, *args, **kwargs):
+        res = fn(*args, **kwargs)
+        if on_done:
+            on_done(res)
+
+    mw.run_db_task = sync_run
+    mw.load_transactions = lambda: None
+
+    mw.on_delete_clicked()
+
+    assert "Transaction deleted (id=10)" in mw.text_display.toPlainText()
+    assert mw.status.currentMessage().lower().startswith("transaction")
+
+
+def test_table_selection_and_edit_flow(qtbot, monkeypatch):
+    mw = MainWindow()
+    qtbot.addWidget(mw)
+
+    # Populate the table with one transaction row
+    rows = [{"id": 5, "date": "2025-01-01", "description": "Old", "category": "X", "amount": 1.0}]
+    mw._populate_transactions(rows)
+    qtbot.wait(50)
+
+    # Select the first row
+    mw.tx_table.selectRow(0)
+    qtbot.wait(50)
+
+    # Verify selected id helper
+    assert mw._get_selected_transaction_id() == 5
+
+    # Fake fetch and update flow
+    class FakeDB:
+        def fetch_transaction_by_id(self, tid):
+            return {"id": tid, "description": "Old", "amount": 1.0, "date": "2025-01-01", "category": "X"}
+
+        def update_transaction(self, tx):
+            return True
+
+    mw.db_manager = FakeDB()
+
+    # Fake TransactionForm to accept updated data
+    class FakeEditDlg:
+        def __init__(self, parent=None, db_manager=None, transaction=None):
+            pass
+
+        def exec(self):
+            return True
+
+        def get_transaction(self):
+            return {"description": "New", "amount": 2.0, "date": "2025-02-02", "category": "Y"}
+
+    monkeypatch.setattr("ui.main_window.TransactionForm", FakeEditDlg)
+
+    # synchronous runner
+    def sync_run(fn, on_done=None, *args, **kwargs):
+        res = fn(*args, **kwargs)
+        if on_done:
+            on_done(res)
+
+    mw.run_db_task = sync_run
+    mw.load_transactions = lambda: None
+
+    mw.on_edit_clicked()
+
+    assert "Transaction updated (id=5)" in mw.text_display.toPlainText()
+    assert mw.status.currentMessage().lower().startswith("transaction")
