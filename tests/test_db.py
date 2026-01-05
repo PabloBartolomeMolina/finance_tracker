@@ -6,10 +6,14 @@
 '''
 import os
 import csv
+import warnings
 from pathlib import Path
 import pytest
 
 from database.db_manager import DatabaseManager
+
+# Show all warnings
+warnings.filterwarnings('default')
 
 EPSILON = 1e-6
 

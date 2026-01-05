@@ -1,4 +1,5 @@
 import time
+import warnings
 from pathlib import Path
 
 import pytest
@@ -7,6 +8,9 @@ from PyQt6 import QtCore, QtWidgets
 
 import config
 from ui.main_window import MainWindow
+
+# Show all warnings
+warnings.filterwarnings('default')
 
 
 @pytest.fixture(autouse=True)
