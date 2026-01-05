@@ -182,6 +182,9 @@ def test_on_delete_clicked_confirms_and_deletes(qtbot, monkeypatch):
 
 
 def test_table_selection_and_edit_flow(qtbot, monkeypatch):
+    # Prevent load_transactions from being called during MainWindow init
+    monkeypatch.setattr("ui.main_window.MainWindow.load_transactions", lambda self: None)
+    
     mw = MainWindow()
     qtbot.addWidget(mw)
 
@@ -235,6 +238,4 @@ def test_table_selection_and_edit_flow(qtbot, monkeypatch):
     mw.on_edit_clicked()
 
     assert "Transaction updated (id=5)" in mw.text_display.toPlainText()
-    # Status message should contain transaction-related text
-    status_msg = mw.status.currentMessage().lower()
-    assert "transaction" in status_msg or "updated" in status_msg or "editing" in status_msg
+    assert mw.status.currentMessage().lower().startswith("transaction")
