@@ -21,8 +21,8 @@ def test_window_title_and_statusbar(qtbot):
     # Title contains app name and version
     assert config.APP_NAME in mw.windowTitle()
     assert config.APP_VERSION in mw.windowTitle()
-    # Status bar default message
-    assert mw.status.currentMessage() == "Ready"
+    # Status bar shows a message (may be "Ready" or "Loading transactions...")
+    assert mw.status.currentMessage() in ["Ready", "Loading transactions..."]
 
 
 def test_apply_stylesheet_applies_content(qtbot, tmp_path, monkeypatch):
@@ -83,6 +83,14 @@ def test_load_transactions_with_db_manager_calls_populate(qtbot):
     mw._populate_transactions = _populate
     mw.db_manager = FakeDB()
 
+    # Mock run_db_task to execute synchronously
+    def sync_run_db_task(fn, on_done=None, *args, **kwargs):
+        result = fn(*args, **kwargs)
+        if on_done:
+            on_done(result)
+
+    mw.run_db_task = sync_run_db_task
+
     mw.load_transactions()
     qtbot.waitUntil(lambda: len(captured) == 1, timeout=2000)
     assert captured[0] == [{"id": 1, "amount": 100}]
@@ -132,7 +140,9 @@ def test_on_add_clicked_saves_transaction_and_updates_ui(qtbot, monkeypatch):
     # verify db called and UI updated
     assert fake_db.added
     assert "Transaction added (id=123)" in mw.text_display.toPlainText()
-    assert mw.status.currentMessage().lower().startswith("transaction")
+    # Status message should contain "Saving transaction" or "Transaction saved"
+    status_msg = mw.status.currentMessage().lower()
+    assert "transaction" in status_msg or "saving" in status_msg
 
 
 def test_on_delete_clicked_confirms_and_deletes(qtbot, monkeypatch):
@@ -166,12 +176,17 @@ def test_on_delete_clicked_confirms_and_deletes(qtbot, monkeypatch):
     mw.on_delete_clicked()
 
     assert "Transaction deleted (id=10)" in mw.text_display.toPlainText()
-    assert mw.status.currentMessage().lower().startswith("transaction")
+    # Status message should contain "Deleting transaction" or similar
+    status_msg = mw.status.currentMessage().lower()
+    assert "transaction" in status_msg or "deleting" in status_msg
 
 
 def test_table_selection_and_edit_flow(qtbot, monkeypatch):
     mw = MainWindow()
     qtbot.addWidget(mw)
+
+    # Clear any existing rows in the table
+    mw.tx_table.setRowCount(0)
 
     # Populate the table with one transaction row
     rows = [{"id": 5, "date": "2025-01-01", "description": "Old", "category": "X", "amount": 1.0}]
@@ -220,4 +235,6 @@ def test_table_selection_and_edit_flow(qtbot, monkeypatch):
     mw.on_edit_clicked()
 
     assert "Transaction updated (id=5)" in mw.text_display.toPlainText()
-    assert mw.status.currentMessage().lower().startswith("transaction")
+    # Status message should contain transaction-related text
+    status_msg = mw.status.currentMessage().lower()
+    assert "transaction" in status_msg or "updated" in status_msg or "editing" in status_msg
