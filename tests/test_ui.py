@@ -41,6 +41,7 @@ class TestReportsView(unittest.TestCase):
     def setUp(self):
         """Set up test fixtures."""
         self.mock_db = MagicMock(spec=DatabaseManager)
+        self.mock_db.fetch_transactions.return_value = []
         self.widget = ReportsView(db_manager=self.mock_db)
 
     def tearDown(self):
@@ -71,6 +72,10 @@ class TestReportsView(unittest.TestCase):
             {"id": 1, "amount": 100.0, "category": "Food", "date": "2025-01-01"},
             {"id": 2, "amount": 50.0, "category": "Transport", "date": "2025-01-02"},
         ]
+        self.mock_db.fetch_transactions.return_value = mock_transactions
+        
+        # Reset the mock to clear any previous calls from setUp
+        self.mock_db.reset_mock()
         self.mock_db.fetch_transactions.return_value = mock_transactions
 
         self.widget._load_data()
